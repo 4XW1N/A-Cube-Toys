@@ -666,6 +666,7 @@
   </div>
 </div>
 
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
 // ---- Header scroll state ----
 const header = document.getElementById('siteHeader');
@@ -840,20 +841,22 @@ animate();
 
 // ============================================================
 // Account (Login / Sign up) + Orders & Returns + UPI checkout
+// Backed by Supabase (real users table = auth.users, real orders table)
 // ============================================================
 const overlay = document.getElementById('modalOverlay');
 const modalBox = document.getElementById('modalBox');
 const UPI_VPA = 'acubetoys@okhdfcbank'; // merchant UPI ID — replace with real one before going live
 const UPI_NAME = 'A Cube Toys';
 
-let session = null;
-try { session = JSON.parse(localStorage.getItem('act_session') || 'null'); } catch(e) { session = null; }
+// ---- Fill these in with your Supabase project's values ----
+// Project Settings → API → Project URL / anon public key
+const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
+const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const sb = (SUPABASE_URL.startsWith('http'))
+  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
+  : null;
 
-const mockOrders = [
-  {name:'Rocket Building Kit', date:'12 Jun 2026', amount:'₹999', status:'Delivered'},
-  {name:'Glow Marbles', date:'28 Jun 2026', amount:'₹849', status:'In transit'},
-  {name:'Bounce Ball', date:'03 Jul 2026', amount:'₹399', status:'Delivered'},
-];
+let session = null;
 
 function openModal(html){
   modalBox.innerHTML = `<span class="modal-close" id="modalCloseBtn">✕</span>` + html;
@@ -863,86 +866,144 @@ function openModal(html){
 }
 function closeModal(){ overlay.classList.remove('open'); }
 
+function showError(msg){
+  const el = document.getElementById('authError');
+  if(el){ el.textContent = msg; el.style.display = 'block'; }
+}
+
+function notConfigured(){
+  openModal(`
+    <h3>Almost there</h3>
+    <p class="modal-sub">Login isn't connected to a database yet.</p>
+    <p style="font-size:0.9rem; color:#5c5d7a; line-height:1.6;">
+      Add your Supabase project URL and anon key to <code>SUPABASE_URL</code> / <code>SUPABASE_ANON_KEY</code>
+      near the top of the script, then reload this page.
+    </p>
+  `);
+}
+
 function renderLogin(){
+  if(!sb) return notConfigured();
   openModal(`
     <h3>Log in</h3>
     <p class="modal-sub">Track orders, manage returns, and check out faster.</p>
     <form id="loginForm">
       <div class="field"><label>Email</label><input type="email" id="loginEmail" required placeholder="you@email.com"></div>
       <div class="field"><label>Password</label><input type="password" id="loginPass" required placeholder="••••••••"></div>
+      <p id="authError" style="display:none;color:#d24545;font-size:0.85rem;margin-bottom:12px;"></p>
       <button type="submit" class="modal-submit">Log in</button>
     </form>
     <div class="modal-switch">New here? <a href="javascript:void(0)" id="toSignup">Create an account</a></div>
   `);
   document.getElementById('toSignup').onclick = renderSignup;
-  document.getElementById('loginForm').onsubmit = (e)=>{
+  document.getElementById('loginForm').onsubmit = async (e)=>{
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
-    logIn(email.split('@')[0]);
+    const password = document.getElementById('loginPass').value;
+    const { data, error } = await sb.auth.signInWithPassword({ email, password });
+    if(error) return showError(error.message);
+    session = data.session;
+    renderAccount();
   };
 }
 
 function renderSignup(){
+  if(!sb) return notConfigured();
   openModal(`
     <h3>Create your account</h3>
     <p class="modal-sub">Takes about 20 seconds.</p>
     <form id="signupForm">
       <div class="field"><label>Full name</label><input type="text" id="suName" required placeholder="Your name"></div>
       <div class="field"><label>Email</label><input type="email" id="suEmail" required placeholder="you@email.com"></div>
-      <div class="field"><label>Password</label><input type="password" id="suPass" required placeholder="••••••••"></div>
+      <div class="field"><label>Password</label><input type="password" id="suPass" required placeholder="At least 6 characters"></div>
+      <p id="authError" style="display:none;color:#d24545;font-size:0.85rem;margin-bottom:12px;"></p>
       <button type="submit" class="modal-submit">Sign up</button>
     </form>
     <div class="modal-switch">Already have an account? <a href="javascript:void(0)" id="toLogin">Log in</a></div>
   `);
   document.getElementById('toLogin').onclick = renderLogin;
-  document.getElementById('signupForm').onsubmit = (e)=>{
+  document.getElementById('signupForm').onsubmit = async (e)=>{
     e.preventDefault();
     const name = document.getElementById('suName').value;
-    logIn(name);
+    const email = document.getElementById('suEmail').value;
+    const password = document.getElementById('suPass').value;
+    const { data, error } = await sb.auth.signUp({
+      email, password,
+      options: { data: { full_name: name } }
+    });
+    if(error) return showError(error.message);
+    if(!data.session){
+      // email confirmation is on in this Supabase project
+      openModal(`
+        <h3>Check your inbox</h3>
+        <p class="modal-sub">We sent a confirmation link to ${email}. Confirm it, then log in.</p>
+        <button class="modal-submit" id="backToLogin">Back to login</button>
+      `);
+      document.getElementById('backToLogin').onclick = renderLogin;
+      return;
+    }
+    session = data.session;
+    renderAccount();
   };
 }
 
-function logIn(name){
-  session = {name: name || 'Guest'};
-  try { localStorage.setItem('act_session', JSON.stringify(session)); } catch(e) {}
-  renderAccount();
-}
-function logOut(){
+async function logOut(){
+  if(sb) await sb.auth.signOut();
   session = null;
-  try { localStorage.removeItem('act_session'); } catch(e) {}
   renderLogin();
 }
 
-function renderAccount(){
-  const initials = session.name.slice(0,2).toUpperCase();
-  const orderRows = mockOrders.map(o => `
-    <div class="order-item">
-      <div>
-        <div class="oi-name">${o.name}</div>
-        <div class="oi-meta">${o.date} · ${o.amount}</div>
-        ${o.status === 'Delivered' ? '<a href="javascript:void(0)" class="return-link">Start a return</a>' : ''}
-      </div>
-      <span class="order-status ${o.status === 'Delivered' ? 'status-delivered' : 'status-transit'}">${o.status}</span>
-    </div>
-  `).join('');
+async function renderAccount(){
+  const user = session.user;
+  const name = user.user_metadata?.full_name || user.email.split('@')[0];
+  const initials = name.slice(0,2).toUpperCase();
+
+  const { data: orders, error } = await sb
+    .from('orders')
+    .select('*')
+    .eq('user_id', user.id)
+    .order('created_at', { ascending: false });
+
+  const orderRows = (orders && orders.length)
+    ? orders.map(o => `
+        <div class="order-item">
+          <div>
+            <div class="oi-name">${o.item_name}</div>
+            <div class="oi-meta">${new Date(o.created_at).toLocaleDateString()} · ${o.amount}</div>
+            ${o.status === 'Delivered' ? `<a href="javascript:void(0)" class="return-link" data-order-id="${o.id}">Start a return</a>` : ''}
+          </div>
+          <span class="order-status ${o.status === 'Delivered' ? 'status-delivered' : 'status-transit'}">${o.status}</span>
+        </div>
+      `).join('')
+    : `<p style="font-size:0.9rem;color:#8b8ca8;padding:14px 0;">No orders yet — anything you buy at checkout will show up here.</p>`;
+
   openModal(`
     <div class="account-name">
       <div class="account-avatar">${initials}</div>
-      <div><strong style="display:block;color:var(--navy);">${session.name}</strong><span style="font-size:0.82rem;color:#8b8ca8;">Signed in</span></div>
+      <div><strong style="display:block;color:var(--navy);">${name}</strong><span style="font-size:0.82rem;color:#8b8ca8;">${user.email}</span></div>
     </div>
     <h3 style="font-size:1.1rem;">Orders & returns</h3>
     <div style="margin-top:10px;">${orderRows}</div>
     <button class="logout-btn" id="logoutBtn">Log out</button>
   `);
   document.getElementById('logoutBtn').onclick = logOut;
+  document.querySelectorAll('.return-link').forEach(el=>{
+    el.onclick = async ()=>{
+      await sb.from('orders').update({ status: 'Return requested' }).eq('id', el.dataset.orderId);
+      renderAccount();
+    };
+  });
 }
 
-document.getElementById('accountLink').addEventListener('click', ()=>{
+document.getElementById('accountLink').addEventListener('click', async ()=>{
+  if(!sb) return notConfigured();
+  const { data } = await sb.auth.getSession();
+  session = data.session;
   session ? renderAccount() : renderLogin();
 });
 
 // ---- Real UPI payment request ----
-function buildUpiLink(scheme, amountRupees, itemName){
+function buildUpiLink(amountRupees, itemName){
   const params = new URLSearchParams({
     pa: UPI_VPA,
     pn: UPI_NAME,
@@ -950,45 +1011,22 @@ function buildUpiLink(scheme, amountRupees, itemName){
     am: amountRupees,
     cu: 'INR'
   });
-  return `${scheme}?${params.toString()}`;
-}
-
-// Tries to open the Google Pay app directly (tez:// is GPay's own scheme),
-// then falls back to the generic upi:// intent if GPay isn't installed
-// or doesn't respond within ~1.2s (covers PhonePe/Paytm/desktop cases too).
-function payWithGpay(amountRupees, itemName){
-  const gpayLink = buildUpiLink('tez://upi/pay', amountRupees, itemName);
-  const genericLink = buildUpiLink('upi://pay', amountRupees, itemName);
-
-  let didHide = false;
-  const onHide = () => { didHide = true; };
-  document.addEventListener('visibilitychange', onHide, {once:true});
-
-  window.location.href = gpayLink;
-
-  setTimeout(() => {
-    document.removeEventListener('visibilitychange', onHide);
-    if (!didHide) {
-      // GPay didn't open (not installed / desktop) — fall back to generic UPI intent
-      window.location.href = genericLink;
-    }
-  }, 1200);
+  return `upi://pay?${params.toString()}`;
 }
 
 function openCheckout(name, priceStr){
   const amount = priceStr.replace('₹','').replace(/,/g,'');
+  const upiLink = buildUpiLink(amount, name);
   openModal(`
     <h3>Checkout</h3>
     <p class="modal-sub">${name} · ${priceStr}</p>
     <div class="pay-methods">
       <div class="pay-chip active"><span class="upi-badge">UPI</span> UPI / GPay</div>
     </div>
-    <button id="gpayPayBtn" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ${priceStr} with GPay</button>
-    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">Opens Google Pay directly on your phone. If GPay isn't installed, it falls back to your default UPI app.</p>
+    <a href="${upiLink}" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ${priceStr} with GPay / UPI</a>
+    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">On your phone, Android shows a chooser of installed UPI apps (GPay, PhonePe, Paytm) — pick GPay there. This standard "upi://" intent is what all UPI apps register as a handler for.</p>
   `);
-  document.getElementById('gpayPayBtn').onclick = () => payWithGpay(amount, name);
 }
 </script>
 </body>
 </html>
-
