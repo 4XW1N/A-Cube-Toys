@@ -850,8 +850,8 @@ const UPI_NAME = 'A Cube Toys';
 
 // ---- Fill these in with your Supabase project's values ----
 // Project Settings → API → Project URL / anon public key
-const SUPABASE_URL = 'YOUR_SUPABASE_PROJECT_URL';
-const SUPABASE_ANON_KEY = 'YOUR_SUPABASE_ANON_KEY';
+const SUPABASE_URL = 'https://jjyrwdxuzmibggbfvtqb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable__uopmZ9Pv5CVNHRu2YTSog_Dv66NTpb';
 const sb = (SUPABASE_URL.startsWith('http'))
   ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
   : null;
@@ -1014,7 +1014,7 @@ function buildUpiLink(amountRupees, itemName){
   return `upi://pay?${params.toString()}`;
 }
 
-function openCheckout(name, priceStr){
+async function openCheckout(name, priceStr){
   const amount = priceStr.replace('₹','').replace(/,/g,'');
   const upiLink = buildUpiLink(amount, name);
   openModal(`
@@ -1023,10 +1023,29 @@ function openCheckout(name, priceStr){
     <div class="pay-methods">
       <div class="pay-chip active"><span class="upi-badge">UPI</span> UPI / GPay</div>
     </div>
-    <a href="${upiLink}" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ${priceStr} with GPay / UPI</a>
+    <a href="${upiLink}" id="payLink" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ${priceStr} with GPay / UPI</a>
     <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">On your phone, Android shows a chooser of installed UPI apps (GPay, PhonePe, Paytm) — pick GPay there. This standard "upi://" intent is what all UPI apps register as a handler for.</p>
   `);
+  // NOTE: this logs the order as soon as the pay link is tapped — it does NOT
+  // confirm the UPI payment actually succeeded. A real store needs a payment
+  // gateway (Razorpay/Cashfree UPI) with a server-side webhook that verifies
+  // the payment before marking an order as paid.
+  const payLink = document.getElementById('payLink');
+  if(sb){
+    payLink.addEventListener('click', async ()=>{
+      const { data } = await sb.auth.getSession();
+      if(data.session){
+        await sb.from('orders').insert({
+          user_id: data.session.user.id,
+          item_name: name,
+          amount: priceStr,
+          status: 'In transit'
+        });
+      }
+    });
+  }
 }
 </script>
 </body>
 </html>
+
