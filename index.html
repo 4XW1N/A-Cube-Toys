@@ -376,6 +376,89 @@
   a:focus-visible, button:focus-visible, input:focus-visible{
     outline:3px solid var(--coral); outline-offset:2px;
   }
+
+  /* ---------- Modal ---------- */
+  .modal-overlay{
+    position:fixed; inset:0; background:rgba(15,16,36,0.55);
+    display:flex; align-items:center; justify-content:center;
+    z-index:1000; opacity:0; pointer-events:none;
+    transition:opacity .25s ease;
+    padding:20px;
+  }
+  .modal-overlay.open{opacity:1; pointer-events:auto;}
+  .modal-box{
+    background:#fff; border-radius:24px; padding:36px; width:100%; max-width:420px;
+    position:relative; transform:translateY(20px) scale(0.97); transition:transform .25s ease;
+    max-height:86vh; overflow-y:auto;
+  }
+  .modal-overlay.open .modal-box{transform:translateY(0) scale(1);}
+  .modal-close{
+    position:absolute; top:18px; right:18px; width:34px; height:34px; border-radius:50%;
+    background:var(--cream); display:flex; align-items:center; justify-content:center;
+    font-size:1.1rem; color:var(--navy); transition:background .2s ease, transform .2s ease;
+  }
+  .modal-close:hover{background:var(--coral); color:#fff; transform:rotate(90deg);}
+  .modal-box h3{font-family:'Baloo 2'; font-size:1.5rem; color:var(--navy); margin-bottom:6px;}
+  .modal-sub{color:#7a7b95; font-size:0.9rem; margin-bottom:24px;}
+  .field{margin-bottom:16px;}
+  .field label{display:block; font-size:0.82rem; font-weight:600; color:var(--navy); margin-bottom:6px;}
+  .field input{
+    width:100%; padding:13px 16px; border-radius:12px; border:2px solid #eee7d8;
+    font-family:inherit; font-size:0.95rem; transition:border-color .2s ease;
+  }
+  .field input:focus{border-color:var(--coral); outline:none;}
+  .modal-submit{
+    width:100%; background:var(--navy); color:var(--cream); padding:14px; border-radius:100px;
+    font-weight:700; margin-top:6px; transition:transform .2s ease;
+  }
+  .modal-submit:hover{transform:translateY(-2px);}
+  .modal-switch{text-align:center; margin-top:18px; font-size:0.88rem; color:#7a7b95;}
+  .modal-switch a{color:var(--coral); font-weight:600;}
+
+  .order-item{
+    display:flex; justify-content:space-between; align-items:center;
+    padding:14px 0; border-bottom:1px solid #f0ead9;
+  }
+  .order-item:last-child{border-bottom:none;}
+  .order-item .oi-name{font-weight:600; color:var(--navy); font-size:0.94rem;}
+  .order-item .oi-meta{font-size:0.78rem; color:#8b8ca8; margin-top:2px;}
+  .order-status{
+    font-size:0.75rem; font-weight:700; padding:5px 12px; border-radius:100px;
+  }
+  .status-delivered{background:#e3f7ec; color:#1f9d5c;}
+  .status-transit{background:#fff3d9; color:#b8860b;}
+  .return-link{font-size:0.78rem; color:var(--coral); font-weight:600; margin-top:4px; display:inline-block;}
+  .account-name{
+    display:flex; align-items:center; gap:12px; margin-bottom:22px; padding:14px;
+    background:var(--cream); border-radius:16px;
+  }
+  .account-avatar{
+    width:44px; height:44px; border-radius:50%; background:var(--coral);
+    display:flex; align-items:center; justify-content:center; color:#fff; font-family:'Baloo 2'; font-weight:700;
+  }
+  .logout-btn{
+    width:100%; margin-top:22px; padding:12px; border-radius:100px; border:2px solid #eee7d8;
+    font-weight:600; color:var(--navy); transition:border-color .2s ease;
+  }
+  .logout-btn:hover{border-color:var(--coral);}
+
+  .pay-methods{display:flex; gap:10px; margin-top:16px; flex-wrap:wrap;}
+  .pay-chip{
+    display:flex; align-items:center; gap:8px; padding:10px 16px; border-radius:100px;
+    border:2px solid #eee7d8; font-size:0.85rem; font-weight:600; cursor:pointer;
+    transition:border-color .2s ease, background .2s ease;
+  }
+  .pay-chip.active{border-color:var(--navy); background:var(--navy); color:var(--cream);}
+  .upi-badge{
+    width:18px; height:18px; border-radius:4px; background:#5F259F; color:#fff;
+    display:flex; align-items:center; justify-content:center; font-size:0.6rem; font-weight:800;
+  }
+  .gpay-badge{
+    width:18px; height:18px; border-radius:50%; background:#fff; border:1px solid #ddd;
+    display:flex; align-items:center; justify-content:center; font-size:0.65rem; font-weight:800;
+  }
+  .footer-pay-row{display:flex; align-items:center; gap:10px; margin-top:14px;}
+  .footer-pay-row span{font-size:0.8rem; color:#9d9eb8;}
 </style>
 </head>
 <body>
@@ -396,7 +479,10 @@
         <a href="#reviews">Reviews</a>
         <a href="#footer">Contact</a>
       </div>
-      <a href="#shop" class="nav-cta">Shop Now</a>
+      <div style="display:flex; align-items:center; gap:16px;">
+        <a href="#" id="accountLink" class="nav-cta" style="background:transparent;color:var(--navy);border:2px solid var(--navy);box-shadow:none;">Account</a>
+        <a href="#shop" class="nav-cta">Shop Now</a>
+      </div>
     </nav>
   </div>
 </header>
@@ -462,7 +548,7 @@
           <div class="swatch" data-color="#5B9CFF" style="background:#5B9CFF"></div>
           <div class="swatch" data-color="#C4A6FF" style="background:#C4A6FF"></div>
         </div>
-        <a href="#footer" class="btn-primary" style="margin-top:34px;">Start your gift box — $38</a>
+        <a href="#footer" class="btn-primary" style="margin-top:34px;">Start your gift box — ₹1,499</a>
       </div>
       <div class="builder-visual">
         <div id="bigCube">
@@ -535,7 +621,12 @@
     <div class="footer-grid">
       <div>
         <div class="footer-brand">A Cube Toys</div>
-        <p style="max-width:260px; font-size:0.9rem; line-height:1.6;">Designing playful geometry for kids since 2018. Every toy starts as a cube.</p>
+        <p style="max-width:260px; font-size:0.9rem; line-height:1.6;">A small toy shop with a big imagination, since 2018.</p>
+        <div class="footer-pay-row">
+          <span>We accept</span>
+          <div class="upi-badge">UPI</div>
+          <div class="gpay-badge">G</div>
+        </div>
       </div>
       <div>
         <h4>Shop</h4>
@@ -569,6 +660,12 @@
   </div>
 </footer>
 
+<div class="modal-overlay" id="modalOverlay">
+  <div class="modal-box" id="modalBox">
+    <!-- content injected by JS -->
+  </div>
+</div>
+
 <script>
 // ---- Header scroll state ----
 const header = document.getElementById('siteHeader');
@@ -579,14 +676,14 @@ window.addEventListener('scroll', () => {
 // ---- Product data ----
 const colors = ['#FF6B5B','#FFCB47','#5FD9A4','#5B9CFF','#C4A6FF'];
 const products = [
-  {name:'Cuddle Fox Plush', tag:'Plush · ages 0+', price:'$22', shape:'circle'},
-  {name:'Rocket Building Kit', tag:'Building set · ages 5+', price:'$34', shape:'triangle'},
-  {name:'Twist Puzzle', tag:'Brain teaser · ages 6+', price:'$18', shape:'square'},
-  {name:'Glow Marbles', tag:'Light-up · ages 3+', price:'$29', shape:'circle'},
-  {name:'Mini Race Track', tag:'Vehicle set · ages 4+', price:'$45', shape:'blob'},
-  {name:'Story Puppet Set', tag:'Character set · ages 2+', price:'$26', shape:'square'},
-  {name:'Bounce Ball', tag:'Outdoor · ages 4+', price:'$14', shape:'circle'},
-  {name:'Star Stacker', tag:'Creative play · ages 3+', price:'$24', shape:'star'},
+  {name:'Cuddle Fox Plush', tag:'Plush · ages 0+', price:'₹649', shape:'circle'},
+  {name:'Rocket Building Kit', tag:'Building set · ages 5+', price:'₹999', shape:'triangle'},
+  {name:'Twist Puzzle', tag:'Brain teaser · ages 6+', price:'₹499', shape:'square'},
+  {name:'Glow Marbles', tag:'Light-up · ages 3+', price:'₹849', shape:'circle'},
+  {name:'Mini Race Track', tag:'Vehicle set · ages 4+', price:'₹1,299', shape:'blob'},
+  {name:'Story Puppet Set', tag:'Character set · ages 2+', price:'₹749', shape:'square'},
+  {name:'Bounce Ball', tag:'Outdoor · ages 4+', price:'₹399', shape:'circle'},
+  {name:'Star Stacker', tag:'Creative play · ages 3+', price:'₹699', shape:'star'},
 ];
 const shapeCSS = {
   circle: 'border-radius:50%;',
@@ -609,9 +706,13 @@ products.forEach((p,i)=>{
     <h3>${p.name}</h3>
     <div class="price-row">
       <span class="price">${p.price}</span>
-      <span class="add-btn">+</span>
+      <span class="add-btn" data-name="${p.name}" data-price="${p.price}">+</span>
     </div>`;
   grid.appendChild(card);
+});
+grid.addEventListener('click', (e)=>{
+  const btn = e.target.closest('.add-btn');
+  if(btn) openCheckout(btn.dataset.name, btn.dataset.price);
 });
 
 // reveal cards on scroll
