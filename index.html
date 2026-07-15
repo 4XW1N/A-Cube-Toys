@@ -942,7 +942,7 @@ document.getElementById('accountLink').addEventListener('click', ()=>{
 });
 
 // ---- Real UPI payment request ----
-function buildUpiLink(amountRupees, itemName){
+function buildUpiLink(scheme, amountRupees, itemName){
   const params = new URLSearchParams({
     pa: UPI_VPA,
     pn: UPI_NAME,
@@ -950,21 +950,43 @@ function buildUpiLink(amountRupees, itemName){
     am: amountRupees,
     cu: 'INR'
   });
-  return `upi://pay?${params.toString()}`;
+  return `${scheme}?${params.toString()}`;
+}
+
+// Tries to open the Google Pay app directly (tez:// is GPay's own scheme),
+// then falls back to the generic upi:// intent if GPay isn't installed
+// or doesn't respond within ~1.2s (covers PhonePe/Paytm/desktop cases too).
+function payWithGpay(amountRupees, itemName){
+  const gpayLink = buildUpiLink('tez://upi/pay', amountRupees, itemName);
+  const genericLink = buildUpiLink('upi://pay', amountRupees, itemName);
+
+  let didHide = false;
+  const onHide = () => { didHide = true; };
+  document.addEventListener('visibilitychange', onHide, {once:true});
+
+  window.location.href = gpayLink;
+
+  setTimeout(() => {
+    document.removeEventListener('visibilitychange', onHide);
+    if (!didHide) {
+      // GPay didn't open (not installed / desktop) — fall back to generic UPI intent
+      window.location.href = genericLink;
+    }
+  }, 1200);
 }
 
 function openCheckout(name, priceStr){
   const amount = priceStr.replace('₹','').replace(/,/g,'');
-  const upiLink = buildUpiLink(amount, name);
   openModal(`
     <h3>Checkout</h3>
     <p class="modal-sub">${name} · ${priceStr}</p>
     <div class="pay-methods">
       <div class="pay-chip active"><span class="upi-badge">UPI</span> UPI / GPay</div>
     </div>
-    <a href="${upiLink}" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ${priceStr} with GPay / UPI</a>
-    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">Opens your UPI app (GPay, PhonePe, Paytm) on mobile. On desktop, scan the same intent as a QR from your UPI app.</p>
+    <button id="gpayPayBtn" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ${priceStr} with GPay</button>
+    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">Opens Google Pay directly on your phone. If GPay isn't installed, it falls back to your default UPI app.</p>
   `);
+  document.getElementById('gpayPayBtn').onclick = () => payWithGpay(amount, name);
 }
 </script>
 </body>
