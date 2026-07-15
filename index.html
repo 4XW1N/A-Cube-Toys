@@ -480,7 +480,7 @@
         <a href="#footer">Contact</a>
       </div>
       <div style="display:flex; align-items:center; gap:16px;">
-        <a href="#" id="accountLink" class="nav-cta" style="background:transparent;color:var(--navy);border:2px solid var(--navy);box-shadow:none;">Account</a>
+        <a href="javascript:void(0)" id="accountLink" class="nav-cta" style="background:transparent;color:var(--navy);border:2px solid var(--navy);box-shadow:none;">Account</a>
         <a href="#shop" class="nav-cta">Shop Now</a>
       </div>
     </nav>
@@ -837,6 +837,135 @@ function animate(){
   requestAnimationFrame(animate);
 }
 animate();
+
+// ============================================================
+// Account (Login / Sign up) + Orders & Returns + UPI checkout
+// ============================================================
+const overlay = document.getElementById('modalOverlay');
+const modalBox = document.getElementById('modalBox');
+const UPI_VPA = 'acubetoys@okhdfcbank'; // merchant UPI ID — replace with real one before going live
+const UPI_NAME = 'A Cube Toys';
+
+let session = null;
+try { session = JSON.parse(localStorage.getItem('act_session') || 'null'); } catch(e) { session = null; }
+
+const mockOrders = [
+  {name:'Rocket Building Kit', date:'12 Jun 2026', amount:'₹999', status:'Delivered'},
+  {name:'Glow Marbles', date:'28 Jun 2026', amount:'₹849', status:'In transit'},
+  {name:'Bounce Ball', date:'03 Jul 2026', amount:'₹399', status:'Delivered'},
+];
+
+function openModal(html){
+  modalBox.innerHTML = `<span class="modal-close" id="modalCloseBtn">✕</span>` + html;
+  overlay.classList.add('open');
+  document.getElementById('modalCloseBtn').onclick = closeModal;
+  overlay.onclick = (e)=>{ if(e.target === overlay) closeModal(); };
+}
+function closeModal(){ overlay.classList.remove('open'); }
+
+function renderLogin(){
+  openModal(`
+    <h3>Log in</h3>
+    <p class="modal-sub">Track orders, manage returns, and check out faster.</p>
+    <form id="loginForm">
+      <div class="field"><label>Email</label><input type="email" id="loginEmail" required placeholder="you@email.com"></div>
+      <div class="field"><label>Password</label><input type="password" id="loginPass" required placeholder="••••••••"></div>
+      <button type="submit" class="modal-submit">Log in</button>
+    </form>
+    <div class="modal-switch">New here? <a href="javascript:void(0)" id="toSignup">Create an account</a></div>
+  `);
+  document.getElementById('toSignup').onclick = renderSignup;
+  document.getElementById('loginForm').onsubmit = (e)=>{
+    e.preventDefault();
+    const email = document.getElementById('loginEmail').value;
+    logIn(email.split('@')[0]);
+  };
+}
+
+function renderSignup(){
+  openModal(`
+    <h3>Create your account</h3>
+    <p class="modal-sub">Takes about 20 seconds.</p>
+    <form id="signupForm">
+      <div class="field"><label>Full name</label><input type="text" id="suName" required placeholder="Your name"></div>
+      <div class="field"><label>Email</label><input type="email" id="suEmail" required placeholder="you@email.com"></div>
+      <div class="field"><label>Password</label><input type="password" id="suPass" required placeholder="••••••••"></div>
+      <button type="submit" class="modal-submit">Sign up</button>
+    </form>
+    <div class="modal-switch">Already have an account? <a href="javascript:void(0)" id="toLogin">Log in</a></div>
+  `);
+  document.getElementById('toLogin').onclick = renderLogin;
+  document.getElementById('signupForm').onsubmit = (e)=>{
+    e.preventDefault();
+    const name = document.getElementById('suName').value;
+    logIn(name);
+  };
+}
+
+function logIn(name){
+  session = {name: name || 'Guest'};
+  try { localStorage.setItem('act_session', JSON.stringify(session)); } catch(e) {}
+  renderAccount();
+}
+function logOut(){
+  session = null;
+  try { localStorage.removeItem('act_session'); } catch(e) {}
+  renderLogin();
+}
+
+function renderAccount(){
+  const initials = session.name.slice(0,2).toUpperCase();
+  const orderRows = mockOrders.map(o => `
+    <div class="order-item">
+      <div>
+        <div class="oi-name">${o.name}</div>
+        <div class="oi-meta">${o.date} · ${o.amount}</div>
+        ${o.status === 'Delivered' ? '<a href="javascript:void(0)" class="return-link">Start a return</a>' : ''}
+      </div>
+      <span class="order-status ${o.status === 'Delivered' ? 'status-delivered' : 'status-transit'}">${o.status}</span>
+    </div>
+  `).join('');
+  openModal(`
+    <div class="account-name">
+      <div class="account-avatar">${initials}</div>
+      <div><strong style="display:block;color:var(--navy);">${session.name}</strong><span style="font-size:0.82rem;color:#8b8ca8;">Signed in</span></div>
+    </div>
+    <h3 style="font-size:1.1rem;">Orders & returns</h3>
+    <div style="margin-top:10px;">${orderRows}</div>
+    <button class="logout-btn" id="logoutBtn">Log out</button>
+  `);
+  document.getElementById('logoutBtn').onclick = logOut;
+}
+
+document.getElementById('accountLink').addEventListener('click', ()=>{
+  session ? renderAccount() : renderLogin();
+});
+
+// ---- Real UPI payment request ----
+function buildUpiLink(amountRupees, itemName){
+  const params = new URLSearchParams({
+    pa: UPI_VPA,
+    pn: UPI_NAME,
+    tn: `A Cube Toys - ${itemName}`,
+    am: amountRupees,
+    cu: 'INR'
+  });
+  return `upi://pay?${params.toString()}`;
+}
+
+function openCheckout(name, priceStr){
+  const amount = priceStr.replace('₹','').replace(/,/g,'');
+  const upiLink = buildUpiLink(amount, name);
+  openModal(`
+    <h3>Checkout</h3>
+    <p class="modal-sub">${name} · ${priceStr}</p>
+    <div class="pay-methods">
+      <div class="pay-chip active"><span class="upi-badge">UPI</span> UPI / GPay</div>
+    </div>
+    <a href="${upiLink}" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ${priceStr} with GPay / UPI</a>
+    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">Opens your UPI app (GPay, PhonePe, Paytm) on mobile. On desktop, scan the same intent as a QR from your UPI app.</p>
+  `);
+}
 </script>
 </body>
 </html>
