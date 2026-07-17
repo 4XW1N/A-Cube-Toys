@@ -1187,9 +1187,11 @@ function renderLogin(){
       <p id="authError" style="display:none;color:#d24545;font-size:0.85rem;margin-bottom:12px;"></p>
       <button type="submit" class="modal-submit">Log in</button>
     </form>
+    <div class="modal-switch"><a href="javascript:void(0)" id="toForgot">Forgot password?</a></div>
     <div class="modal-switch">New here? <a href="javascript:void(0)" id="toSignup">Create an account</a></div>
   `);
   document.getElementById('toSignup').onclick = renderSignup;
+  document.getElementById('toForgot').onclick = renderForgotPassword;
   document.getElementById('loginForm').onsubmit = async (e)=>{
     e.preventDefault();
     const email = document.getElementById('loginEmail').value;
@@ -1201,6 +1203,69 @@ function renderLogin(){
     renderProducts('all');
     renderAccount();
   };
+}
+
+function renderForgotPassword(){
+  if(!sb) return notConfigured();
+  openModal(`
+    <h3>Reset your password</h3>
+    <p class="modal-sub">We'll email you a link to set a new one.</p>
+    <form id="forgotForm">
+      <div class="field"><label>Email</label><input type="email" id="forgotEmail" required placeholder="you@email.com"></div>
+      <p id="authError" style="display:none;color:#d24545;font-size:0.85rem;margin-bottom:12px;"></p>
+      <button type="submit" class="modal-submit">Send reset link</button>
+    </form>
+    <div class="modal-switch">Remembered it? <a href="javascript:void(0)" id="toLoginFromForgot">Log in</a></div>
+  `);
+  document.getElementById('toLoginFromForgot').onclick = renderLogin;
+  document.getElementById('forgotForm').onsubmit = async (e)=>{
+    e.preventDefault();
+    const email = document.getElementById('forgotEmail').value;
+    const redirectTo = window.location.origin + window.location.pathname;
+    const { error } = await sb.auth.resetPasswordForEmail(email, { redirectTo });
+    if(error) return showError(error.message);
+    openModal(`
+      <h3>Check your inbox</h3>
+      <p class="modal-sub">We sent a password reset link to ${email}. Open it on this device to set a new password.</p>
+      <button class="modal-submit" id="backToLogin2">Back to login</button>
+    `);
+    document.getElementById('backToLogin2').onclick = renderLogin;
+  };
+}
+
+function renderSetNewPassword(){
+  openModal(`
+    <h3>Set a new password</h3>
+    <p class="modal-sub">Choose a new password for your account.</p>
+    <form id="newPassForm">
+      <div class="field"><label>New password</label><input type="password" id="newPass1" required placeholder="At least 6 characters"></div>
+      <div class="field"><label>Confirm password</label><input type="password" id="newPass2" required placeholder="Retype it"></div>
+      <p id="authError" style="display:none;color:#d24545;font-size:0.85rem;margin-bottom:12px;"></p>
+      <button type="submit" class="modal-submit">Save new password</button>
+    </form>
+  `);
+  document.getElementById('newPassForm').onsubmit = async (e)=>{
+    e.preventDefault();
+    const p1 = document.getElementById('newPass1').value;
+    const p2 = document.getElementById('newPass2').value;
+    if(p1 !== p2) return showError("Passwords don't match.");
+    const { error } = await sb.auth.updateUser({ password: p1 });
+    if(error) return showError(error.message);
+    openModal(`
+      <h3>Password updated</h3>
+      <p class="modal-sub">You're all set — log in with your new password.</p>
+      <button class="modal-submit" id="backToLogin3">Log in</button>
+    `);
+    document.getElementById('backToLogin3').onclick = renderLogin;
+  };
+}
+
+// Supabase redirects here after the person clicks the reset-password email link,
+// firing a PASSWORD_RECOVERY auth event we listen for to show the new-password screen.
+if(sb){
+  sb.auth.onAuthStateChange((event) => {
+    if(event === 'PASSWORD_RECOVERY') renderSetNewPassword();
+  });
 }
 
 function renderSignup(){
@@ -1389,4 +1454,3 @@ async function openCheckout(name, priceStr){
 </script>
 </body>
 </html>
-
