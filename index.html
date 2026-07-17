@@ -773,10 +773,12 @@ let currentUser = null; // set once we know who's logged in
 let session = null;
 
 // ---- Prevent auto-jump on load from a leftover URL hash ----
-if (window.location.hash) {
+// (but never touch a Supabase auth hash like #access_token=...&type=recovery — Supabase needs to read that itself)
+const isAuthHash = /access_token|refresh_token|type=recovery|error_description/.test(window.location.hash);
+if (window.location.hash && !isAuthHash) {
   history.replaceState(null, '', window.location.pathname + window.location.search);
 }
-window.scrollTo(0, 0);
+if (!isAuthHash) window.scrollTo(0, 0);
 
 // ---- Internal nav links scroll smoothly without touching the URL hash ----
 document.querySelectorAll('a[href^="#"]').forEach(link => {
@@ -1454,3 +1456,4 @@ async function openCheckout(name, priceStr){
 </script>
 </body>
 </html>
+
