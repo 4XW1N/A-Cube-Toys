@@ -459,11 +459,74 @@
   }
   .footer-pay-row{display:flex; align-items:center; gap:10px; margin-top:14px;}
   .footer-pay-row span{font-size:0.8rem; color:#9d9eb8;}
+
+  /* ---------- Announcement bar ---------- */
+  .announce-bar{
+    background:var(--coral); color:#fff; text-align:center;
+    font-size:0.82rem; font-weight:600; padding:8px 16px;
+    position:relative; z-index:110;
+  }
+
+  /* ---------- Shop by age ---------- */
+  .age-strip{display:flex; gap:16px; overflow-x:auto; padding-bottom:8px;}
+  .age-strip::-webkit-scrollbar{height:6px;}
+  .age-strip::-webkit-scrollbar-thumb{background:var(--lilac);border-radius:10px;}
+  .age-chip{
+    flex:0 0 auto; min-width:96px; text-align:center; cursor:pointer;
+    padding:18px 14px; border-radius:18px; background:#fff;
+    box-shadow:0 2px 10px rgba(23,24,51,0.06);
+    transition:transform .2s ease, box-shadow .2s ease;
+  }
+  .age-chip:hover{transform:translateY(-4px); box-shadow:0 10px 20px rgba(23,24,51,0.1);}
+  .age-chip .age-dot{
+    width:44px; height:44px; border-radius:50%; margin:0 auto 10px;
+    display:flex; align-items:center; justify-content:center;
+    font-family:'Baloo 2'; font-weight:700; color:#fff; font-size:0.85rem;
+  }
+  .age-chip span{font-size:0.8rem; font-weight:600; color:var(--navy);}
+  .age-chip.active{outline:2.5px solid var(--navy);}
+
+  /* ---------- Product card as button ---------- */
+  .product-card{cursor:pointer;}
+
+  /* ---------- Product detail modal ---------- */
+  .pd-thumb{
+    height:180px; border-radius:18px; margin-bottom:20px;
+    display:flex; align-items:center; justify-content:center;
+  }
+  .pd-thumb .shape{width:90px; height:90px;}
+  .pd-badge{
+    display:inline-block; background:var(--mint); color:var(--navy);
+    font-size:0.72rem; font-weight:700; padding:4px 12px; border-radius:100px;
+    margin-bottom:10px;
+  }
+
+  /* ---------- Stats / trust section ---------- */
+  .trust-section{
+    display:grid; grid-template-columns:repeat(3,1fr); gap:24px; text-align:center;
+  }
+  .trust-item strong{
+    display:block; font-family:'Baloo 2'; font-size:2.6rem; color:var(--navy);
+  }
+  .trust-item span{color:#7a7b95; font-size:0.9rem;}
+
+  /* ---------- WhatsApp float button ---------- */
+  .whatsapp-float{
+    position:fixed; bottom:24px; right:24px; z-index:90;
+    width:56px; height:56px; border-radius:50%; background:#25D366;
+    display:flex; align-items:center; justify-content:center;
+    box-shadow:0 6px 20px rgba(37,211,102,0.4);
+    transition:transform .2s ease;
+  }
+  .whatsapp-float:hover{transform:scale(1.08);}
+  .whatsapp-float svg{width:28px; height:28px; fill:#fff;}
 </style>
 </head>
 <body>
 
-<header id="siteHeader">
+<div id="topBar" style="position:fixed; top:0; left:0; right:0; z-index:100;">
+<div class="announce-bar">🚚 Free shipping on orders above ₹1,999 · India-wide delivery</div>
+<header id="siteHeader" style="position:relative;">
   <div class="wrap">
     <nav>
       <a href="#" class="logo">
@@ -486,8 +549,9 @@
     </nav>
   </div>
 </header>
+</div>
 
-<section class="hero">
+<section class="hero" style="padding-top:126px;">
   <div class="float-cube" style="top:14%; left:6%; width:34px; height:34px; background:var(--yellow); animation-delay:0s;"></div>
   <div class="float-cube" style="top:70%; left:10%; width:22px; height:22px; background:var(--sky); animation-delay:1.2s;"></div>
   <div class="float-cube" style="top:22%; left:92%; width:28px; height:28px; background:var(--mint); animation-delay:0.6s;"></div>
@@ -530,7 +594,15 @@
       <h2>A little bit of everything</h2>
       <p>Plushies, puzzles, building kits, and outdoor toys — a hand-picked mix for whatever kind of play your kid is into this week.</p>
     </div>
-    <div class="product-grid" id="productGrid"></div>
+    <div class="age-strip" id="ageStrip">
+      <div class="age-chip active" data-age="all"><div class="age-dot" style="background:var(--navy);">All</div><span>All ages</span></div>
+      <div class="age-chip" data-age="0+"><div class="age-dot" style="background:var(--coral);">0-1</div><span>Infant</span></div>
+      <div class="age-chip" data-age="2+"><div class="age-dot" style="background:var(--yellow);">2-3</div><span>Toddler</span></div>
+      <div class="age-chip" data-age="3+"><div class="age-dot" style="background:var(--mint);">3-5</div><span>Preschool</span></div>
+      <div class="age-chip" data-age="4+"><div class="age-dot" style="background:var(--sky);">4-6</div><span>Kid</span></div>
+      <div class="age-chip" data-age="6+"><div class="age-dot" style="background:var(--lilac);">6+</div><span>Big kid</span></div>
+    </div>
+    <div class="product-grid" id="productGrid" style="margin-top:36px;"></div>
   </div>
 </section>
 
@@ -603,6 +675,20 @@
   </div>
 </section>
 
+<section style="padding-top:0;">
+  <div class="wrap">
+    <div class="section-head" style="margin:0 auto 40px; text-align:center;">
+      <span class="kicker">Why shop with us</span>
+      <h2>You're in good hands</h2>
+    </div>
+    <div class="trust-section">
+      <div class="trust-item"><strong>180k+</strong><span>toys sold</span></div>
+      <div class="trust-item"><strong>95%</strong><span>positive reviews</span></div>
+      <div class="trust-item"><strong>7+</strong><span>years serving parents</span></div>
+    </div>
+  </div>
+</section>
+
 <section>
   <div class="wrap">
     <div class="newsletter">
@@ -660,6 +746,10 @@
   </div>
 </footer>
 
+<a href="https://wa.me/919999999999?text=Hi%20A%20Cube%20Toys%2C%20I%20have%20a%20question" target="_blank" rel="noopener" class="whatsapp-float" aria-label="Chat on WhatsApp">
+  <svg viewBox="0 0 24 24"><path d="M17.6 6.32A7.85 7.85 0 0 0 12.05 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.2-1.1a7.9 7.9 0 0 0 3.85 1h.01a7.94 7.94 0 0 0 5.54-13.58zm-5.55 12.2a6.6 6.6 0 0 1-3.36-.92l-.24-.14-2.5.65.67-2.43-.16-.25a6.6 6.6 0 1 1 12.24-3.5 6.6 6.6 0 0 1-6.65 6.59zm3.62-4.94c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.5.64-.62.77-.23.15-.43.05a5.4 5.4 0 0 1-1.6-.98 6 6 0 0 1-1.1-1.37c-.12-.2 0-.3.09-.4s.2-.23.3-.35.13-.2.2-.33a.36.36 0 0 0 0-.35c-.05-.1-.44-1.05-.6-1.44-.16-.38-.32-.33-.44-.33h-.37a.72.72 0 0 0-.52.24 2.2 2.2 0 0 0-.68 1.63c0 .96.7 1.9.8 2.03s1.37 2.1 3.33 2.94c.46.2.83.32 1.11.4.47.15.9.13 1.24.08.38-.06 1.17-.48 1.34-.94s.17-.86.12-.94-.18-.13-.38-.23z"/></svg>
+</a>
+
 <div class="modal-overlay" id="modalOverlay">
   <div class="modal-box" id="modalBox">
     <!-- content injected by JS -->
@@ -668,6 +758,24 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+// ---- Prevent auto-jump on load from a leftover URL hash ----
+if (window.location.hash) {
+  history.replaceState(null, '', window.location.pathname + window.location.search);
+}
+window.scrollTo(0, 0);
+
+// ---- Internal nav links scroll smoothly without touching the URL hash ----
+document.querySelectorAll('a[href^="#"]').forEach(link => {
+  link.addEventListener('click', (e) => {
+    const id = link.getAttribute('href').slice(1);
+    const target = document.getElementById(id);
+    if (target) {
+      e.preventDefault();
+      target.scrollIntoView({ behavior: 'smooth', block: 'start' });
+    }
+  });
+});
+
 // ---- Header scroll state ----
 const header = document.getElementById('siteHeader');
 window.addEventListener('scroll', () => {
@@ -677,14 +785,22 @@ window.addEventListener('scroll', () => {
 // ---- Product data ----
 const colors = ['#FF6B5B','#FFCB47','#5FD9A4','#5B9CFF','#C4A6FF'];
 const products = [
-  {name:'Cuddle Fox Plush', tag:'Plush · ages 0+', price:'₹649', shape:'circle'},
-  {name:'Rocket Building Kit', tag:'Building set · ages 5+', price:'₹999', shape:'triangle'},
-  {name:'Twist Puzzle', tag:'Brain teaser · ages 6+', price:'₹499', shape:'square'},
-  {name:'Glow Marbles', tag:'Light-up · ages 3+', price:'₹849', shape:'circle'},
-  {name:'Mini Race Track', tag:'Vehicle set · ages 4+', price:'₹1,299', shape:'blob'},
-  {name:'Story Puppet Set', tag:'Character set · ages 2+', price:'₹749', shape:'square'},
-  {name:'Bounce Ball', tag:'Outdoor · ages 4+', price:'₹399', shape:'circle'},
-  {name:'Star Stacker', tag:'Creative play · ages 3+', price:'₹699', shape:'star'},
+  {name:'Cuddle Fox Plush', tag:'Plush · ages 0+', price:'₹649', shape:'circle', age:'0+',
+    desc:'A featherlight, machine-washable fox plush sized just right for small hands and even smaller naps. Soft-woven fabric, no loose parts, safe from day one.'},
+  {name:'Rocket Building Kit', tag:'Building set · ages 5+', price:'₹999', shape:'triangle', age:'4+',
+    desc:'42 chunky, snap-together pieces that build into a stand-up rocket in about 20 minutes. Great for first building projects — no tools, no tiny fiddly bits.'},
+  {name:'Twist Puzzle', tag:'Brain teaser · ages 6+', price:'₹499', shape:'square', age:'6+',
+    desc:'A pocket-sized twisting puzzle that sharpens pattern recognition and patience. Durable ABS plastic built to survive backpacks, car rides, and drops.'},
+  {name:'Glow Marbles', tag:'Light-up · ages 3+', price:'₹849', shape:'circle', age:'3+',
+    desc:'A set of 12 marbles that glow after a few seconds under any light. Great for dusk games in the yard or a calming bedtime wind-down activity.'},
+  {name:'Mini Race Track', tag:'Vehicle set · ages 4+', price:'₹1,299', shape:'blob', age:'4+',
+    desc:'A foldable racetrack with two pull-back cars included. Loops, a jump ramp, and a finish-line arch — sets up on any floor in under five minutes.'},
+  {name:'Story Puppet Set', tag:'Character set · ages 2+', price:'₹749', shape:'square', age:'2+',
+    desc:'Five soft hand puppets with distinct faces to encourage imaginative, narrative play. Machine washable, stitched (not glued) features for durability.'},
+  {name:'Bounce Ball', tag:'Outdoor · ages 4+', price:'₹399', shape:'circle', age:'4+',
+    desc:'A grippy, high-bounce outdoor ball sized for small hands. Weather-resistant coating so it holds up on pavement, grass, or sand.'},
+  {name:'Star Stacker', tag:'Creative play · ages 3+', price:'₹699', shape:'star', age:'3+',
+    desc:'Seven graduated star-shaped rings that stack, sort, and nest. Builds early counting and fine-motor skills through open-ended play.'},
 ];
 const shapeCSS = {
   circle: 'border-radius:50%;',
@@ -694,27 +810,65 @@ const shapeCSS = {
   star: 'clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);border-radius:0;'
 };
 const grid = document.getElementById('productGrid');
-products.forEach((p,i)=>{
-  const c = colors[i % colors.length];
-  const card = document.createElement('div');
-  card.className = 'product-card';
-  const extra = p.shape === 'triangle' ? `border-bottom-color:${c};` : `background:${c};`;
-  card.innerHTML = `
-    <div class="product-thumb" style="background:${c}22;">
-      <div class="shape" style="${shapeCSS[p.shape]}${extra}"></div>
-    </div>
-    <span class="tag">${p.tag}</span>
-    <h3>${p.name}</h3>
-    <div class="price-row">
-      <span class="price">${p.price}</span>
-      <span class="add-btn" data-name="${p.name}" data-price="${p.price}">+</span>
-    </div>`;
-  grid.appendChild(card);
+function renderProducts(filterAge){
+  grid.innerHTML = '';
+  products.forEach((p,i)=>{
+    if(filterAge && filterAge !== 'all' && p.age !== filterAge) return;
+    const c = colors[i % colors.length];
+    const card = document.createElement('div');
+    card.className = 'product-card';
+    card.dataset.name = p.name;
+    const extra = p.shape === 'triangle' ? `border-bottom-color:${c};` : `background:${c};`;
+    card.innerHTML = `
+      <div class="product-thumb" style="background:${c}22;">
+        <div class="shape" style="${shapeCSS[p.shape]}${extra}"></div>
+      </div>
+      <span class="tag">${p.tag}</span>
+      <h3>${p.name}</h3>
+      <div class="price-row">
+        <span class="price">${p.price}</span>
+        <span class="add-btn" data-name="${p.name}" data-price="${p.price}">+</span>
+      </div>`;
+    grid.appendChild(card);
+  });
+}
+renderProducts('all');
+
+document.getElementById('ageStrip').addEventListener('click', (e)=>{
+  const chip = e.target.closest('.age-chip');
+  if(!chip) return;
+  document.querySelectorAll('.age-chip').forEach(c=>c.classList.remove('active'));
+  chip.classList.add('active');
+  renderProducts(chip.dataset.age);
 });
+
 grid.addEventListener('click', (e)=>{
   const btn = e.target.closest('.add-btn');
-  if(btn) openCheckout(btn.dataset.name, btn.dataset.price);
+  if(btn){ openCheckout(btn.dataset.name, btn.dataset.price); return; }
+  const card = e.target.closest('.product-card');
+  if(card) openProductDetail(card.dataset.name);
 });
+
+function openProductDetail(name){
+  const p = products.find(x => x.name === name);
+  if(!p) return;
+  const c = colors[products.indexOf(p) % colors.length];
+  const extra = p.shape === 'triangle' ? `border-bottom-color:${c};` : `background:${c};`;
+  openModal(`
+    <div class="pd-thumb" style="background:${c}22;">
+      <div class="shape" style="${shapeCSS[p.shape]}${extra}"></div>
+    </div>
+    <span class="pd-badge">${p.tag}</span>
+    <h3>${p.name}</h3>
+    <p style="color:#5c5d7a; line-height:1.6; font-size:0.95rem; margin-top:10px;">${p.desc}</p>
+    <div class="price-row" style="margin-top:22px;">
+      <span class="price" style="font-size:1.4rem;">${p.price}</span>
+    </div>
+    <button class="modal-submit" id="pdAddBtn" style="margin-top:18px;">Add to bag — ${p.price}</button>
+  `);
+  document.getElementById('pdAddBtn').onclick = () => openCheckout(p.name, p.price);
+}
+
 
 // reveal cards on scroll
 const cards = document.querySelectorAll('.product-card');
@@ -1048,4 +1202,3 @@ async function openCheckout(name, priceStr){
 </script>
 </body>
 </html>
-
