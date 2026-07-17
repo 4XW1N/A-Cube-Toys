@@ -950,22 +950,62 @@ function openProductEditor(existing){
         </select>
       </div>
       <div class="field"><label>Description</label><input type="text" id="pfDesc" value="${p.description || ''}"></div>
-      <div class="field"><label>Photo URL (optional — leave blank for a placeholder shape)</label><input type="text" id="pfImage" value="${p.image_url || ''}" placeholder="https://..."></div>
+      <div class="field">
+        <label>Photo (optional — pick from your phone/computer)</label>
+        <div id="pfPreviewWrap" style="margin-bottom:10px; ${p.image_url ? '' : 'display:none;'}">
+          <img id="pfPreview" src="${p.image_url || ''}" style="width:70px; height:70px; object-fit:cover; border-radius:12px;">
+        </div>
+        <input type="file" id="pfImageFile" accept="image/*" style="width:100%; padding:11px; border-radius:12px; border:2px solid #eee7d8; font-family:inherit; font-size:0.85rem;">
+        <input type="hidden" id="pfImageUrl" value="${p.image_url || ''}">
+      </div>
       <p id="authError" style="display:none;color:#d24545;font-size:0.85rem;margin-bottom:12px;"></p>
-      <button type="submit" class="modal-submit">${existing ? 'Save changes' : 'Add item'}</button>
+      <button type="submit" class="modal-submit" id="pfSubmitBtn">${existing ? 'Save changes' : 'Add item'}</button>
     </form>
   `);
+
+  // Preview the picked photo immediately, before upload
+  document.getElementById('pfImageFile').addEventListener('change', (e)=>{
+    const file = e.target.files[0];
+    if(!file) return;
+    const reader = new FileReader();
+    reader.onload = () => {
+      document.getElementById('pfPreview').src = reader.result;
+      document.getElementById('pfPreviewWrap').style.display = 'block';
+    };
+    reader.readAsDataURL(file);
+  });
+
   document.getElementById('productForm').onsubmit = async (e)=>{
     e.preventDefault();
+    if(!sb) return showError('Not connected to the database.');
+
+    const submitBtn = document.getElementById('pfSubmitBtn');
+    const file = document.getElementById('pfImageFile').files[0];
+    let imageUrl = document.getElementById('pfImageUrl').value || null;
+
+    if(file){
+      submitBtn.textContent = 'Uploading photo…';
+      submitBtn.disabled = true;
+      const ext = file.name.split('.').pop();
+      const path = `${Date.now()}-${Math.random().toString(36).slice(2)}.${ext}`;
+      const { error: uploadError } = await sb.storage.from('product-images').upload(path, file);
+      if(uploadError){
+        submitBtn.disabled = false;
+        submitBtn.textContent = existing ? 'Save changes' : 'Add item';
+        return showError('Photo upload failed: ' + uploadError.message);
+      }
+      const { data: publicData } = sb.storage.from('product-images').getPublicUrl(path);
+      imageUrl = publicData.publicUrl;
+    }
+
     const payload = {
       name: document.getElementById('pfName').value,
       tag: document.getElementById('pfTag').value,
       price: document.getElementById('pfPrice').value,
       age: document.getElementById('pfAge').value,
       description: document.getElementById('pfDesc').value,
-      image_url: document.getElementById('pfImage').value || null,
+      image_url: imageUrl,
     };
-    if(!sb) return showError('Not connected to the database.');
     if(existing){
       const { error } = await sb.from('products').update(payload).eq('id', existing.id);
       if(error) return showError(error.message);
@@ -1349,3 +1389,4 @@ async function openCheckout(name, priceStr){
 </script>
 </body>
 </html>
+
