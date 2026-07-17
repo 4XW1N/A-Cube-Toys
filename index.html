@@ -758,6 +758,20 @@
 
 <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2/dist/umd/supabase.min.js"></script>
 <script>
+const SUPABASE_URL = 'https://jjyrwdxuzmibggbfvtqb.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable__uopmZ9Pv5CVNHRu2YTSog_Dv66NTpb';
+let sb = null;
+try {
+  if (SUPABASE_URL.startsWith('http') && typeof supabase !== 'undefined') {
+    sb = supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+  }
+} catch (e) {
+  console.error('Supabase failed to initialize:', e);
+}
+const ADMIN_EMAIL = 'aswinkumarank@gmail.com';
+let currentUser = null; // set once we know who's logged in
+let session = null;
+
 // ---- Prevent auto-jump on load from a leftover URL hash ----
 if (window.location.hash) {
   history.replaceState(null, '', window.location.pathname + window.location.search);
@@ -782,26 +796,27 @@ window.addEventListener('scroll', () => {
   header.classList.toggle('scrolled', window.scrollY > 20);
 });
 
-// ---- Product data ----
+// ---- Product data (loaded from Supabase `products` table; static list is only a fallback) ----
 const colors = ['#FF6B5B','#FFCB47','#5FD9A4','#5B9CFF','#C4A6FF'];
-const products = [
-  {name:'Cuddle Fox Plush', tag:'Plush · ages 0+', price:'₹649', shape:'circle', age:'0+',
-    desc:'A featherlight, machine-washable fox plush sized just right for small hands and even smaller naps. Soft-woven fabric, no loose parts, safe from day one.'},
-  {name:'Rocket Building Kit', tag:'Building set · ages 5+', price:'₹999', shape:'triangle', age:'4+',
-    desc:'42 chunky, snap-together pieces that build into a stand-up rocket in about 20 minutes. Great for first building projects — no tools, no tiny fiddly bits.'},
-  {name:'Twist Puzzle', tag:'Brain teaser · ages 6+', price:'₹499', shape:'square', age:'6+',
-    desc:'A pocket-sized twisting puzzle that sharpens pattern recognition and patience. Durable ABS plastic built to survive backpacks, car rides, and drops.'},
-  {name:'Glow Marbles', tag:'Light-up · ages 3+', price:'₹849', shape:'circle', age:'3+',
-    desc:'A set of 12 marbles that glow after a few seconds under any light. Great for dusk games in the yard or a calming bedtime wind-down activity.'},
-  {name:'Mini Race Track', tag:'Vehicle set · ages 4+', price:'₹1,299', shape:'blob', age:'4+',
-    desc:'A foldable racetrack with two pull-back cars included. Loops, a jump ramp, and a finish-line arch — sets up on any floor in under five minutes.'},
-  {name:'Story Puppet Set', tag:'Character set · ages 2+', price:'₹749', shape:'square', age:'2+',
-    desc:'Five soft hand puppets with distinct faces to encourage imaginative, narrative play. Machine washable, stitched (not glued) features for durability.'},
-  {name:'Bounce Ball', tag:'Outdoor · ages 4+', price:'₹399', shape:'circle', age:'4+',
-    desc:'A grippy, high-bounce outdoor ball sized for small hands. Weather-resistant coating so it holds up on pavement, grass, or sand.'},
-  {name:'Star Stacker', tag:'Creative play · ages 3+', price:'₹699', shape:'star', age:'3+',
-    desc:'Seven graduated star-shaped rings that stack, sort, and nest. Builds early counting and fine-motor skills through open-ended play.'},
+const FALLBACK_PRODUCTS = [
+  {id:'fallback-1', name:'Cuddle Fox Plush', tag:'Plush · ages 0+', price:'₹649', shape:'circle', age:'0+',
+    description:'A featherlight, machine-washable fox plush sized just right for small hands and even smaller naps.'},
+  {id:'fallback-2', name:'Rocket Building Kit', tag:'Building set · ages 5+', price:'₹999', shape:'triangle', age:'4+',
+    description:'42 chunky, snap-together pieces that build into a stand-up rocket in about 20 minutes.'},
+  {id:'fallback-3', name:'Twist Puzzle', tag:'Brain teaser · ages 6+', price:'₹499', shape:'square', age:'6+',
+    description:'A pocket-sized twisting puzzle that sharpens pattern recognition and patience.'},
+  {id:'fallback-4', name:'Glow Marbles', tag:'Light-up · ages 3+', price:'₹849', shape:'circle', age:'3+',
+    description:'A set of 12 marbles that glow after a few seconds under any light.'},
+  {id:'fallback-5', name:'Mini Race Track', tag:'Vehicle set · ages 4+', price:'₹1,299', shape:'blob', age:'4+',
+    description:'A foldable racetrack with two pull-back cars included.'},
+  {id:'fallback-6', name:'Story Puppet Set', tag:'Character set · ages 2+', price:'₹749', shape:'square', age:'2+',
+    description:'Five soft hand puppets with distinct faces to encourage imaginative, narrative play.'},
+  {id:'fallback-7', name:'Bounce Ball', tag:'Outdoor · ages 4+', price:'₹399', shape:'circle', age:'4+',
+    description:'A grippy, high-bounce outdoor ball sized for small hands.'},
+  {id:'fallback-8', name:'Star Stacker', tag:'Creative play · ages 3+', price:'₹699', shape:'star', age:'3+',
+    description:'Seven graduated star-shaped rings that stack, sort, and nest.'},
 ];
+let products = [];
 const shapeCSS = {
   circle: 'border-radius:50%;',
   square: 'border-radius:14px;',
@@ -809,30 +824,66 @@ const shapeCSS = {
   blob: 'border-radius:60% 40% 55% 45% / 45% 55% 40% 60%;',
   star: 'clip-path:polygon(50% 0%,61% 35%,98% 35%,68% 57%,79% 91%,50% 70%,21% 91%,32% 57%,2% 35%,39% 35%);border-radius:0;'
 };
+
+async function loadProducts(){
+  if(sb){
+    const { data, error } = await sb.from('products').select('*').order('created_at');
+    if(!error && data && data.length){
+      products = data.map(p => ({...p, shape: p.shape || 'circle', age: p.age || '4+'}));
+      return;
+    }
+  }
+  products = FALLBACK_PRODUCTS;
+}
+
+// reveal cards on scroll — must re-run after every re-render, not just once at load
+const io = new IntersectionObserver((entries)=>{
+  entries.forEach((e,idx)=>{
+    if(e.isIntersecting){
+      setTimeout(()=> e.target.classList.add('visible'), idx * 60);
+      io.unobserve(e.target);
+    }
+  });
+}, {threshold:0.15});
+function observeCards(){
+  document.querySelectorAll('.product-card:not(.visible)').forEach(c=>io.observe(c));
+}
+
+function thumbHTML(p, i, size){
+  const c = colors[i % colors.length];
+  if(p.image_url){
+    return `<img src="${p.image_url}" alt="${p.name}" style="width:100%; height:100%; object-fit:cover; border-radius:inherit;">`;
+  }
+  const extra = p.shape === 'triangle' ? `border-bottom-color:${c};` : `background:${c};`;
+  return `<div class="shape" style="${shapeCSS[p.shape] || shapeCSS.circle}${extra}${size ? `width:${size}px;height:${size}px;` : ''}"></div>`;
+}
+
 const grid = document.getElementById('productGrid');
 function renderProducts(filterAge){
   grid.innerHTML = '';
+  const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
   products.forEach((p,i)=>{
     if(filterAge && filterAge !== 'all' && p.age !== filterAge) return;
     const c = colors[i % colors.length];
     const card = document.createElement('div');
     card.className = 'product-card';
-    card.dataset.name = p.name;
-    const extra = p.shape === 'triangle' ? `border-bottom-color:${c};` : `background:${c};`;
+    card.dataset.id = p.id;
     card.innerHTML = `
       <div class="product-thumb" style="background:${c}22;">
-        <div class="shape" style="${shapeCSS[p.shape]}${extra}"></div>
+        ${thumbHTML(p, i)}
+        ${isAdmin ? `<span class="admin-remove" data-id="${p.id}" title="Remove item" style="position:absolute; top:8px; right:8px; width:26px; height:26px; border-radius:50%; background:#fff; box-shadow:0 2px 8px rgba(0,0,0,0.15); display:flex; align-items:center; justify-content:center; font-size:0.9rem; color:#d24545; cursor:pointer;">✕</span>` : ''}
       </div>
       <span class="tag">${p.tag}</span>
       <h3>${p.name}</h3>
       <div class="price-row">
         <span class="price">${p.price}</span>
-        <span class="add-btn" data-name="${p.name}" data-price="${p.price}">+</span>
+        <span class="add-btn" data-id="${p.id}">+</span>
       </div>`;
+    card.querySelector('.product-thumb').style.position = 'relative';
     grid.appendChild(card);
   });
+  observeCards();
 }
-renderProducts('all');
 
 document.getElementById('ageStrip').addEventListener('click', (e)=>{
   const chip = e.target.closest('.age-chip');
@@ -842,45 +893,104 @@ document.getElementById('ageStrip').addEventListener('click', (e)=>{
   renderProducts(chip.dataset.age);
 });
 
-grid.addEventListener('click', (e)=>{
+grid.addEventListener('click', async (e)=>{
+  const removeBtn = e.target.closest('.admin-remove');
+  if(removeBtn){
+    e.stopPropagation();
+    if(!confirm('Remove this item from the shop?')) return;
+    if(sb) await sb.from('products').delete().eq('id', removeBtn.dataset.id);
+    products = products.filter(p => p.id !== removeBtn.dataset.id);
+    renderProducts('all');
+    document.querySelectorAll('.age-chip').forEach(c=>c.classList.remove('active'));
+    document.querySelector('.age-chip[data-age="all"]').classList.add('active');
+    return;
+  }
   const btn = e.target.closest('.add-btn');
-  if(btn){ openCheckout(btn.dataset.name, btn.dataset.price); return; }
+  if(btn){ const p = products.find(x=>x.id===btn.dataset.id); if(p) openCheckout(p.name, p.price); return; }
   const card = e.target.closest('.product-card');
-  if(card) openProductDetail(card.dataset.name);
+  if(card) openProductDetail(card.dataset.id);
 });
 
-function openProductDetail(name){
-  const p = products.find(x => x.name === name);
+function openProductDetail(id){
+  const p = products.find(x => x.id === id);
   if(!p) return;
-  const c = colors[products.indexOf(p) % colors.length];
-  const extra = p.shape === 'triangle' ? `border-bottom-color:${c};` : `background:${c};`;
+  const i = products.indexOf(p);
+  const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
   openModal(`
-    <div class="pd-thumb" style="background:${c}22;">
-      <div class="shape" style="${shapeCSS[p.shape]}${extra}"></div>
+    <div class="pd-thumb" style="background:${colors[i % colors.length]}22; overflow:hidden;">
+      ${thumbHTML(p, i)}
     </div>
     <span class="pd-badge">${p.tag}</span>
     <h3>${p.name}</h3>
-    <p style="color:#5c5d7a; line-height:1.6; font-size:0.95rem; margin-top:10px;">${p.desc}</p>
+    <p style="color:#5c5d7a; line-height:1.6; font-size:0.95rem; margin-top:10px;">${p.description || ''}</p>
     <div class="price-row" style="margin-top:22px;">
       <span class="price" style="font-size:1.4rem;">${p.price}</span>
     </div>
     <button class="modal-submit" id="pdAddBtn" style="margin-top:18px;">Add to bag — ${p.price}</button>
+    ${isAdmin ? `<button class="modal-submit" id="pdEditBtn" style="margin-top:10px; background:transparent; color:var(--navy); border:2px solid var(--navy);">Edit this item</button>` : ''}
   `);
   document.getElementById('pdAddBtn').onclick = () => openCheckout(p.name, p.price);
+  if(isAdmin){
+    document.getElementById('pdEditBtn').onclick = () => openProductEditor(p);
+  }
 }
 
-
-// reveal cards on scroll
-const cards = document.querySelectorAll('.product-card');
-const io = new IntersectionObserver((entries)=>{
-  entries.forEach((e,idx)=>{
-    if(e.isIntersecting){
-      setTimeout(()=> e.target.classList.add('visible'), idx * 60);
-      io.unobserve(e.target);
+// ---- Admin: add / edit product form ----
+function openProductEditor(existing){
+  const p = existing || {name:'', tag:'', price:'', description:'', image_url:'', age:'4+', shape:'circle'};
+  openModal(`
+    <h3>${existing ? 'Edit item' : 'Add a new item'}</h3>
+    <form id="productForm">
+      <div class="field"><label>Name</label><input type="text" id="pfName" required value="${p.name}"></div>
+      <div class="field"><label>Tag (e.g. "Plush · ages 0+")</label><input type="text" id="pfTag" required value="${p.tag}"></div>
+      <div class="field"><label>Price (e.g. ₹649)</label><input type="text" id="pfPrice" required value="${p.price}"></div>
+      <div class="field"><label>Age group</label>
+        <select id="pfAge" style="width:100%; padding:13px 16px; border-radius:12px; border:2px solid #eee7d8; font-family:inherit; font-size:0.95rem;">
+          ${['0+','2+','3+','4+','6+'].map(a=>`<option value="${a}" ${p.age===a?'selected':''}>${a}</option>`).join('')}
+        </select>
+      </div>
+      <div class="field"><label>Description</label><input type="text" id="pfDesc" value="${p.description || ''}"></div>
+      <div class="field"><label>Photo URL (optional — leave blank for a placeholder shape)</label><input type="text" id="pfImage" value="${p.image_url || ''}" placeholder="https://..."></div>
+      <p id="authError" style="display:none;color:#d24545;font-size:0.85rem;margin-bottom:12px;"></p>
+      <button type="submit" class="modal-submit">${existing ? 'Save changes' : 'Add item'}</button>
+    </form>
+  `);
+  document.getElementById('productForm').onsubmit = async (e)=>{
+    e.preventDefault();
+    const payload = {
+      name: document.getElementById('pfName').value,
+      tag: document.getElementById('pfTag').value,
+      price: document.getElementById('pfPrice').value,
+      age: document.getElementById('pfAge').value,
+      description: document.getElementById('pfDesc').value,
+      image_url: document.getElementById('pfImage').value || null,
+    };
+    if(!sb) return showError('Not connected to the database.');
+    if(existing){
+      const { error } = await sb.from('products').update(payload).eq('id', existing.id);
+      if(error) return showError(error.message);
+    } else {
+      const { error } = await sb.from('products').insert(payload);
+      if(error) return showError(error.message);
     }
-  });
-}, {threshold:0.15});
-cards.forEach(c=>io.observe(c));
+    await loadProducts();
+    renderProducts('all');
+    document.querySelectorAll('.age-chip').forEach(c=>c.classList.remove('active'));
+    document.querySelector('.age-chip[data-age="all"]').classList.add('active');
+    closeModal();
+  };
+}
+
+// ---- Boot: check session, load products, then render ----
+(async () => {
+  if(sb){
+    const { data } = await sb.auth.getSession();
+    session = data.session;
+    currentUser = session ? session.user : null;
+  }
+  await loadProducts();
+  renderProducts('all');
+})();
 
 // ---- Color picker for big cube ----
 const swatches = document.querySelectorAll('.swatch');
@@ -1002,16 +1112,6 @@ const modalBox = document.getElementById('modalBox');
 const UPI_VPA = 'acubetoys@okhdfcbank'; // merchant UPI ID — replace with real one before going live
 const UPI_NAME = 'A Cube Toys';
 
-// ---- Fill these in with your Supabase project's values ----
-// Project Settings → API → Project URL / anon public key
-const SUPABASE_URL = 'https://jjyrwdxuzmibggbfvtqb.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable__uopmZ9Pv5CVNHRu2YTSog_Dv66NTpb';
-const sb = (SUPABASE_URL.startsWith('http'))
-  ? supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY)
-  : null;
-
-let session = null;
-
 function openModal(html){
   modalBox.innerHTML = `<span class="modal-close" id="modalCloseBtn">✕</span>` + html;
   overlay.classList.add('open');
@@ -1057,6 +1157,8 @@ function renderLogin(){
     const { data, error } = await sb.auth.signInWithPassword({ email, password });
     if(error) return showError(error.message);
     session = data.session;
+    currentUser = session.user;
+    renderProducts('all');
     renderAccount();
   };
 }
@@ -1097,6 +1199,8 @@ function renderSignup(){
       return;
     }
     session = data.session;
+    currentUser = session.user;
+    renderProducts('all');
     renderAccount();
   };
 }
@@ -1104,6 +1208,8 @@ function renderSignup(){
 async function logOut(){
   if(sb) await sb.auth.signOut();
   session = null;
+  currentUser = null;
+  renderProducts('all');
   renderLogin();
 }
 
@@ -1131,6 +1237,26 @@ async function renderAccount(){
       `).join('')
     : `<p style="font-size:0.9rem;color:#8b8ca8;padding:14px 0;">No orders yet — anything you buy at checkout will show up here.</p>`;
 
+  const isAdmin = user.email === ADMIN_EMAIL;
+  const adminSection = isAdmin ? `
+    <h3 style="font-size:1.1rem; margin-top:26px;">Manage products (admin)</h3>
+    <div id="adminProductList" style="margin-top:10px; max-height:220px; overflow-y:auto;">
+      ${products.map(p => `
+        <div class="order-item">
+          <div>
+            <div class="oi-name">${p.name}</div>
+            <div class="oi-meta">${p.price}</div>
+          </div>
+          <div style="display:flex; gap:8px;">
+            <a href="javascript:void(0)" class="admin-edit-link" data-id="${p.id}" style="font-size:0.78rem; color:var(--sky); font-weight:600;">Edit</a>
+            <a href="javascript:void(0)" class="admin-del-link" data-id="${p.id}" style="font-size:0.78rem; color:#d24545; font-weight:600;">Remove</a>
+          </div>
+        </div>
+      `).join('')}
+    </div>
+    <button class="modal-submit" id="addProductBtn" style="margin-top:14px; background:var(--coral);">+ Add new item</button>
+  ` : '';
+
   openModal(`
     <div class="account-name">
       <div class="account-avatar">${initials}</div>
@@ -1138,6 +1264,7 @@ async function renderAccount(){
     </div>
     <h3 style="font-size:1.1rem;">Orders & returns</h3>
     <div style="margin-top:10px;">${orderRows}</div>
+    ${adminSection}
     <button class="logout-btn" id="logoutBtn">Log out</button>
   `);
   document.getElementById('logoutBtn').onclick = logOut;
@@ -1147,12 +1274,32 @@ async function renderAccount(){
       renderAccount();
     };
   });
+  if(isAdmin){
+    document.getElementById('addProductBtn').onclick = () => openProductEditor(null);
+    document.querySelectorAll('.admin-edit-link').forEach(el=>{
+      el.onclick = () => {
+        const p = products.find(x => x.id === el.dataset.id);
+        if(p) openProductEditor(p);
+      };
+    });
+    document.querySelectorAll('.admin-del-link').forEach(el=>{
+      el.onclick = async () => {
+        if(!confirm('Remove this item from the shop?')) return;
+        await sb.from('products').delete().eq('id', el.dataset.id);
+        await loadProducts();
+        renderProducts('all');
+        renderAccount();
+      };
+    });
+  }
 }
 
 document.getElementById('accountLink').addEventListener('click', async ()=>{
   if(!sb) return notConfigured();
   const { data } = await sb.auth.getSession();
   session = data.session;
+  currentUser = session ? session.user : null;
+  renderProducts('all');
   session ? renderAccount() : renderLogin();
 });
 
