@@ -830,7 +830,11 @@ const shapeCSS = {
 async function loadProducts(){
   if(sb){
     const { data, error } = await sb.from('products').select('*').order('created_at');
-    if(!error && data && data.length){
+    if(!error && data){
+      // data is a real result from the database — use it even if it's an empty
+      // array, since that means the shop was intentionally emptied out, not that
+      // we failed to connect. Only fall back to the placeholder list below when
+      // the query itself errored (e.g. Supabase unreachable, table missing).
       products = data.map(p => ({...p, shape: p.shape || 'circle', age: p.age || '4+'}));
       return;
     }
@@ -864,8 +868,14 @@ const grid = document.getElementById('productGrid');
 function renderProducts(filterAge){
   grid.innerHTML = '';
   const isAdmin = currentUser && currentUser.email === ADMIN_EMAIL;
-  products.forEach((p,i)=>{
-    if(filterAge && filterAge !== 'all' && p.age !== filterAge) return;
+  const visible = products.filter(p => !filterAge || filterAge === 'all' || p.age === filterAge);
+  if(visible.length === 0){
+    grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#8b8ca8; padding:40px 0;">
+      ${products.length === 0 ? "No products yet — log in as admin and tap \"+ Add new item\" to add your first one." : "No items in this age range yet."}
+    </p>`;
+    return;
+  }
+  visible.forEach((p,i)=>{
     const c = colors[i % colors.length];
     const card = document.createElement('div');
     card.className = 'product-card';
@@ -1456,4 +1466,3 @@ async function openCheckout(name, priceStr){
 </script>
 </body>
 </html>
-
