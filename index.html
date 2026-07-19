@@ -543,6 +543,9 @@
         <a href="#footer">Contact</a>
       </div>
       <div style="display:flex; align-items:center; gap:16px;">
+        <a href="javascript:void(0)" id="cartLink" class="nav-cta" style="background:transparent;color:var(--navy);border:2px solid var(--navy);box-shadow:none; position:relative;">
+          🛍️ Cart<span id="cartBadge" style="display:none; position:absolute; top:-8px; right:-8px; background:var(--coral); color:#fff; font-size:0.7rem; font-weight:700; width:20px; height:20px; border-radius:50%; align-items:center; justify-content:center;">0</span>
+        </a>
         <a href="javascript:void(0)" id="accountLink" class="nav-cta" style="background:transparent;color:var(--navy);border:2px solid var(--navy);box-shadow:none;">Account</a>
         <a href="#shop" class="nav-cta">Shop Now</a>
       </div>
@@ -746,7 +749,7 @@
   </div>
 </footer>
 
-<a href="https://wa.me/919999999999?text=Hi%20A%20Cube%20Toys%2C%20I%20have%20a%20question" target="_blank" rel="noopener" class="whatsapp-float" aria-label="Chat on WhatsApp">
+<a href="https://wa.me/916380870087?text=Hi%20A%20Cube%20Toys%2C%20I%20have%20a%20question" target="_blank" rel="noopener" class="whatsapp-float" aria-label="Chat on WhatsApp">
   <svg viewBox="0 0 24 24"><path d="M17.6 6.32A7.85 7.85 0 0 0 12.05 4a7.94 7.94 0 0 0-6.9 11.9L4 20l4.2-1.1a7.9 7.9 0 0 0 3.85 1h.01a7.94 7.94 0 0 0 5.54-13.58zm-5.55 12.2a6.6 6.6 0 0 1-3.36-.92l-.24-.14-2.5.65.67-2.43-.16-.25a6.6 6.6 0 1 1 12.24-3.5 6.6 6.6 0 0 1-6.65 6.59zm3.62-4.94c-.2-.1-1.17-.58-1.35-.64s-.31-.1-.44.1-.5.64-.62.77-.23.15-.43.05a5.4 5.4 0 0 1-1.6-.98 6 6 0 0 1-1.1-1.37c-.12-.2 0-.3.09-.4s.2-.23.3-.35.13-.2.2-.33a.36.36 0 0 0 0-.35c-.05-.1-.44-1.05-.6-1.44-.16-.38-.32-.33-.44-.33h-.37a.72.72 0 0 0-.52.24 2.2 2.2 0 0 0-.68 1.63c0 .96.7 1.9.8 2.03s1.37 2.1 3.33 2.94c.46.2.83.32 1.11.4.47.15.9.13 1.24.08.38-.06 1.17-.48 1.34-.94s.17-.86.12-.94-.18-.13-.38-.23z"/></svg>
 </a>
 
@@ -918,7 +921,7 @@ grid.addEventListener('click', async (e)=>{
     return;
   }
   const btn = e.target.closest('.add-btn');
-  if(btn){ const p = products.find(x=>x.id===btn.dataset.id); if(p) openCheckout(p.name, p.price); return; }
+  if(btn){ const p = products.find(x=>x.id===btn.dataset.id); if(p) addToCart(p); return; }
   const card = e.target.closest('.product-card');
   if(card) openProductDetail(card.dataset.id);
 });
@@ -941,7 +944,7 @@ function openProductDetail(id){
     <button class="modal-submit" id="pdAddBtn" style="margin-top:18px;">Add to bag — ${p.price}</button>
     ${isAdmin ? `<button class="modal-submit" id="pdEditBtn" style="margin-top:10px; background:transparent; color:var(--navy); border:2px solid var(--navy);">Edit this item</button>` : ''}
   `);
-  document.getElementById('pdAddBtn').onclick = () => openCheckout(p.name, p.price);
+  document.getElementById('pdAddBtn').onclick = () => { addToCart(p); closeModal(); };
   if(isAdmin){
     document.getElementById('pdEditBtn').onclick = () => openProductEditor(p);
   }
@@ -1161,7 +1164,7 @@ animate();
 // ============================================================
 const overlay = document.getElementById('modalOverlay');
 const modalBox = document.getElementById('modalBox');
-const UPI_VPA = 'acubetoys@okhdfcbank'; // merchant UPI ID — replace with real one before going live
+const UPI_VPA = '916380870087@upi'; // NOTE: confirm the exact handle with your bank/PSP app — some banks use a different suffix than @upi (e.g. @okhdfcbank, @paytm, @ybl). Open your UPI app → check your own VPA under "My QR code" / profile to get the exact one.
 const UPI_NAME = 'A Cube Toys';
 
 function openModal(html){
@@ -1420,49 +1423,160 @@ document.getElementById('accountLink').addEventListener('click', async ()=>{
   session ? renderAccount() : renderLogin();
 });
 
+// ============================================================
+// Cart — add items, view/edit cart, collect contact details, then pay
+// ============================================================
+let cart = [];
+try { cart = JSON.parse(localStorage.getItem('act_cart') || '[]'); } catch(e) { cart = []; }
+
+function saveCart(){
+  try { localStorage.setItem('act_cart', JSON.stringify(cart)); } catch(e) {}
+  updateCartBadge();
+}
+function updateCartBadge(){
+  const count = cart.reduce((sum, item) => sum + item.qty, 0);
+  const badge = document.getElementById('cartBadge');
+  badge.textContent = count;
+  badge.style.display = count > 0 ? 'flex' : 'none';
+}
+function addToCart(p){
+  const existing = cart.find(item => item.id === p.id);
+  if(existing) existing.qty += 1;
+  else cart.push({ id: p.id, name: p.name, price: p.price, qty: 1 });
+  saveCart();
+}
+function parseAmount(priceStr){
+  return parseFloat(priceStr.replace('₹','').replace(/,/g,'')) || 0;
+}
+function cartTotal(){
+  return cart.reduce((sum, item) => sum + parseAmount(item.price) * item.qty, 0);
+}
+
+document.getElementById('cartLink').addEventListener('click', openCart);
+
+function openCart(){
+  if(cart.length === 0){
+    openModal(`
+      <h3>Your cart</h3>
+      <p class="modal-sub">Nothing in here yet — go add a few toys!</p>
+    `);
+    return;
+  }
+  const rows = cart.map(item => `
+    <div class="order-item">
+      <div>
+        <div class="oi-name">${item.name}</div>
+        <div class="oi-meta">${item.price} × ${item.qty}</div>
+      </div>
+      <div style="display:flex; align-items:center; gap:10px;">
+        <button class="qty-btn" data-id="${item.id}" data-delta="-1" style="width:26px;height:26px;border-radius:50%;border:2px solid #eee7d8;background:#fff;">–</button>
+        <span style="font-weight:600;">${item.qty}</span>
+        <button class="qty-btn" data-id="${item.id}" data-delta="1" style="width:26px;height:26px;border-radius:50%;border:2px solid #eee7d8;background:#fff;">+</button>
+        <a href="javascript:void(0)" class="cart-remove" data-id="${item.id}" style="color:#d24545; font-size:0.8rem; font-weight:600; margin-left:6px;">Remove</a>
+      </div>
+    </div>
+  `).join('');
+  openModal(`
+    <h3>Your cart</h3>
+    <div style="margin-top:10px; max-height:280px; overflow-y:auto;">${rows}</div>
+    <div style="display:flex; justify-content:space-between; margin-top:18px; padding-top:14px; border-top:2px solid #f0ead9;">
+      <strong style="color:var(--navy);">Total</strong>
+      <strong style="color:var(--navy);">₹${cartTotal().toLocaleString('en-IN')}</strong>
+    </div>
+    <button class="modal-submit" id="toCheckoutBtn" style="margin-top:20px;">Proceed to checkout</button>
+  `);
+  document.querySelectorAll('.qty-btn').forEach(btn => {
+    btn.onclick = () => {
+      const item = cart.find(i => i.id === btn.dataset.id);
+      item.qty += parseInt(btn.dataset.delta);
+      if(item.qty <= 0) cart = cart.filter(i => i.id !== item.id);
+      saveCart();
+      openCart();
+    };
+  });
+  document.querySelectorAll('.cart-remove').forEach(link => {
+    link.onclick = () => {
+      cart = cart.filter(i => i.id !== link.dataset.id);
+      saveCart();
+      openCart();
+    };
+  });
+  document.getElementById('toCheckoutBtn').onclick = openContactForm;
+}
+
+function openContactForm(){
+  openModal(`
+    <h3>Delivery details</h3>
+    <p class="modal-sub">We'll use this to reach you about your order.</p>
+    <form id="contactForm">
+      <div class="field"><label>Full name</label><input type="text" id="ctName" required placeholder="Your name"></div>
+      <div class="field"><label>Phone number</label><input type="tel" id="ctPhone" required placeholder="10-digit mobile number"></div>
+      <div class="field"><label>Delivery address</label><input type="text" id="ctAddress" required placeholder="Flat/house no., street, city, PIN"></div>
+      <button type="submit" class="modal-submit">Continue to payment</button>
+    </form>
+  `);
+  document.getElementById('contactForm').onsubmit = (e)=>{
+    e.preventDefault();
+    const contact = {
+      name: document.getElementById('ctName').value,
+      phone: document.getElementById('ctPhone').value,
+      address: document.getElementById('ctAddress').value,
+    };
+    openPaymentStep(contact);
+  };
+}
+
 // ---- Real UPI payment request ----
-function buildUpiLink(amountRupees, itemName){
+function buildUpiLink(amountRupees, note){
   const params = new URLSearchParams({
     pa: UPI_VPA,
     pn: UPI_NAME,
-    tn: `A Cube Toys - ${itemName}`,
+    tn: note,
     am: amountRupees,
     cu: 'INR'
   });
   return `upi://pay?${params.toString()}`;
 }
 
-async function openCheckout(name, priceStr){
-  const amount = priceStr.replace('₹','').replace(/,/g,'');
-  const upiLink = buildUpiLink(amount, name);
+function openPaymentStep(contact){
+  const total = cartTotal();
+  const itemSummary = cart.map(i => `${i.name} ×${i.qty}`).join(', ');
+  const upiLink = buildUpiLink(total, `A Cube Toys - ${itemSummary}`.slice(0, 90));
   openModal(`
     <h3>Checkout</h3>
-    <p class="modal-sub">${name} · ${priceStr}</p>
+    <p class="modal-sub">${itemSummary}</p>
     <div class="pay-methods">
       <div class="pay-chip active"><span class="upi-badge">UPI</span> UPI / GPay</div>
     </div>
-    <a href="${upiLink}" id="payLink" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ${priceStr} with GPay / UPI</a>
-    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">On your phone, Android shows a chooser of installed UPI apps (GPay, PhonePe, Paytm) — pick GPay there. This standard "upi://" intent is what all UPI apps register as a handler for.</p>
+    <a href="${upiLink}" id="payLink" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ₹${total.toLocaleString('en-IN')} with GPay / UPI</a>
+    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">On your phone, Android shows a chooser of installed UPI apps (GPay, PhonePe, Paytm) — pick GPay there.</p>
   `);
   // NOTE: this logs the order as soon as the pay link is tapped — it does NOT
   // confirm the UPI payment actually succeeded. A real store needs a payment
   // gateway (Razorpay/Cashfree UPI) with a server-side webhook that verifies
   // the payment before marking an order as paid.
   const payLink = document.getElementById('payLink');
-  if(sb){
-    payLink.addEventListener('click', async ()=>{
-      const { data } = await sb.auth.getSession();
-      if(data.session){
-        await sb.from('orders').insert({
-          user_id: data.session.user.id,
-          item_name: name,
-          amount: priceStr,
-          status: 'In transit'
-        });
-      }
-    });
-  }
+  payLink.addEventListener('click', async ()=>{
+    if(!sb) return;
+    const { data } = await sb.auth.getSession();
+    const userId = data.session ? data.session.user.id : null;
+    if(userId){
+      await sb.from('orders').insert({
+        user_id: userId,
+        item_name: itemSummary,
+        amount: `₹${total.toLocaleString('en-IN')}`,
+        status: 'In transit',
+        customer_name: contact.name,
+        customer_phone: contact.phone,
+        customer_address: contact.address,
+      });
+    }
+    cart = [];
+    saveCart();
+  });
 }
+
+updateCartBadge();
 </script>
 </body>
 </html>
