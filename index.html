@@ -874,7 +874,7 @@ function renderProducts(filterAge){
   const visible = products.filter(p => !filterAge || filterAge === 'all' || p.age === filterAge);
   if(visible.length === 0){
     grid.innerHTML = `<p style="grid-column:1/-1; text-align:center; color:#8b8ca8; padding:40px 0;">
-      ${products.length === 0 ? "No products yet — log in as admin and tap \"+ Add new item\" to add your first one." : "No items in this age range yet."}
+      ${products.length === 0 ? "New toys are on the way — check back soon!" : "No items in this age range yet."}
     </p>`;
     return;
   }
@@ -1164,7 +1164,7 @@ animate();
 // ============================================================
 const overlay = document.getElementById('modalOverlay');
 const modalBox = document.getElementById('modalBox');
-const UPI_VPA = '916380870087@upi'; // NOTE: confirm the exact handle with your bank/PSP app — some banks use a different suffix than @upi (e.g. @okhdfcbank, @paytm, @ybl). Open your UPI app → check your own VPA under "My QR code" / profile to get the exact one.
+const UPI_VPA = 'pay-acubetoys@ybl';
 const UPI_NAME = 'A Cube Toys';
 
 function openModal(html){
