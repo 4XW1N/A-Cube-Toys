@@ -1164,8 +1164,8 @@ animate();
 // ============================================================
 const overlay = document.getElementById('modalOverlay');
 const modalBox = document.getElementById('modalBox');
-const UPI_VPA = 'pay-acubetoys@ybl';
-const UPI_NAME = 'A Cube Toys';
+const UPI_VPA = '8012055773-2@ybl'; // pulled directly from A Cube Toys' PhonePe merchant QR code
+const UPI_NAME = 'A CUBE TOYS';
 
 function openModal(html){
   modalBox.innerHTML = `<span class="modal-close" id="modalCloseBtn">✕</span>` + html;
@@ -1531,6 +1531,9 @@ function buildUpiLink(amountRupees, note){
   const params = new URLSearchParams({
     pa: UPI_VPA,
     pn: UPI_NAME,
+    mc: '0000',
+    mode: '02',
+    purpose: '00',
     tn: note,
     am: amountRupees,
     cu: 'INR'
@@ -1545,11 +1548,13 @@ function openPaymentStep(contact){
   openModal(`
     <h3>Checkout</h3>
     <p class="modal-sub">${itemSummary}</p>
-    <div class="pay-methods">
-      <div class="pay-chip active"><span class="upi-badge">UPI</span> UPI / GPay</div>
+    <div style="text-align:center; background:#fff; border:2px solid #f0ead9; border-radius:16px; padding:16px; margin-top:16px;">
+      <img src="qr-code.png" alt="A Cube Toys UPI QR code" style="width:100%; max-width:220px; margin:0 auto; display:block;">
+      <p style="font-size:0.85rem; color:var(--navy); font-weight:700; margin-top:10px;">Scan with any UPI app to pay ₹${total.toLocaleString('en-IN')}</p>
     </div>
-    <a href="${upiLink}" id="payLink" class="modal-submit" style="display:block; text-align:center; margin-top:20px;">Pay ₹${total.toLocaleString('en-IN')} with GPay / UPI</a>
-    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">On your phone, Android shows a chooser of installed UPI apps (GPay, PhonePe, Paytm) — pick GPay there.</p>
+    <p class="modal-sub" style="text-align:center; margin:14px 0;">— or —</p>
+    <a href="${upiLink}" id="payLink" class="modal-submit" style="display:block; text-align:center;">Pay ₹${total.toLocaleString('en-IN')} with GPay / UPI</a>
+    <p class="modal-sub" style="margin-top:14px; margin-bottom:0; font-size:0.78rem;">Scanning the QR is the most reliable option. The button above opens your UPI app directly but some banks limit browser-triggered payment links.</p>
   `);
   // NOTE: this logs the order as soon as the pay link is tapped — it does NOT
   // confirm the UPI payment actually succeeded. A real store needs a payment
